@@ -213,7 +213,7 @@ function fromArena(b) {
 
 const COSMOS_QUERY = `query($clusterInput:ClusterGetInput,$pageCursor:String,$pageSize:Int){
   clusterConnections(clusterInput:$clusterInput meta:{pageSize:$pageSize pageCursor:$pageCursor}){
-    items{element{__typename id createdAt shareUrl generatedCaption{text} source{url}
+    items{createdAt element{__typename id createdAt shareUrl generatedCaption{text} source{url}
       ...on MediaElementTile{media{url __typename ...on Video{thumbnail{url}} ...on AnimatedImage{video{thumbnailUrl}}}}
       ...on WebsiteElementTile{media{url} websiteTitle:title}
       ...on ProductElementTile{media{url} productTitle:name}
@@ -236,8 +236,8 @@ async function fetchCosmos() {
     const json = await res.json();
     const conn = json.data && json.data.clusterConnections;
     if (!conn) throw new Error("cosmos: no data");
-    for (const { element: e } of conn.items) {
-      const item = fromCosmos(e);
+    for (const { createdAt: addedAt, element: e } of conn.items) {
+      const item = fromCosmos(e, addedAt);
       if (item) out.push(item);
     }
     cursor = conn.meta.nextPageCursor;
@@ -251,7 +251,7 @@ function cosmosSized(url, w) {
   return url.split("?")[0] + `?format=jpeg&w=${w}`;
 }
 
-function fromCosmos(e) {
+function fromCosmos(e, addedAt) {
   const m = e.media || null;
   let still = m && m.url;
   if (m && m.__typename === "Video") still = m.thumbnail && m.thumbnail.url;
@@ -271,7 +271,7 @@ function fromCosmos(e) {
     text:  kind === "text" ? (e.text || "") : "",
     url:   (e.source && e.source.url) || null,
     page:  e.shareUrl,
-    date:  new Date(e.createdAt),
+    date:  new Date(addedAt || e.createdAt), // when it was added to the cluster
   };
 }
 
