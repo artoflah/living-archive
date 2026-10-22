@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>@artoflah — living archive</title>
+<meta name="description" content="Weekly thesis documentation by @artoflah, pulled live from are.na and cosmos.">
+<style>
+  /* ---------- settings you might want to change ---------- */
+  :root {
+    --bg: #000;
+    --fg: #fff;
+    --dim: #8a8a8a;
+    --line: #262626;
+    --font: Arial, Helvetica, sans-serif;
+    --pad: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.3 var(--font);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  a:hover, button:hover { opacity: .55; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  :focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
+
+  /* ---------- header ---------- */
+  #top {
+    position: fixed; z-index: 20; inset: 0 0 auto;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
+    background: linear-gradient(var(--bg) 60%, transparent);
+    pointer-events: none;
+  }
+  #top > * { pointer-events: auto; }
+  .ext { display: flex; gap: 40px; }
+  .views { display: flex; gap: 56px; justify-self: end; }
+  .views button[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
+
+  #status {
+    position: fixed; z-index: 20; left: var(--pad);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    font-size: 12px; color: var(--dim);
+  }
+
+  /* ---------- orbit ---------- */
+  #orbit { position: fixed; inset: 0; overflow: hidden; }
+  #orbit .o {
+    position: absolute; left: 0; top: 0;
+    will-change: transform; cursor: pointer;
+  }
+  #orbit .o img {
+    display: block; width: 100%; height: 100%; object-fit: cover;
+    transition: transform .25s ease, opacity .5s ease;
+    opacity: 0;
+  }
+  #orbit .o img.in { opacity: 1; }
+  #orbit .o:hover { z-index: 5; }
+  #orbit .o:hover img { transform: scale(1.35); }
+  #orbit .o.note {
+    background: var(--fg); color: var(--bg);
+    font-size: 7px; line-height: 1.15; padding: 4px; overflow: hidden;
+    transition: transform .25s ease;
+  }
+  #orbit .o.note:hover { transform-origin: center; }
+
+  /* ---------- grid views ---------- */
+  .panel {
+    position: fixed; inset: 0; overflow-y: auto; z-index: 10;
+    background: var(--bg);
+    padding: calc(80px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 80px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .empty { color: var(--dim); max-width: 40ch; }
+
+  /* images */
+  .imgs { columns: 6 180px; column-gap: 12px; }
+  .imgs button { display: block; width: 100%; margin: 0 0 12px; break-inside: avoid; }
+  .imgs img { display: block; width: 100%; height: auto; background: #111; }
+
+  /* links */
+  .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 28px 16px; }
+  .links a { display: grid; gap: 6px; min-width: 0; }
+  .links .thumb { aspect-ratio: 4/3; background: #111; overflow: hidden; }
+  .links .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .links .t { overflow-wrap: anywhere; }
+  .links .d, .meta { font-size: 12px; color: var(--dim); overflow-wrap: anywhere; }
+
+  /* index */
+  .week { padding-block: 0 48px; }
+  .week h2 {
+    font-size: 16px; font-weight: normal; margin: 0 0 14px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  .week h2 span { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .idx { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px 12px; }
+  .idx button { text-align: left; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .idx .sq { aspect-ratio: 1; background: #111; overflow: hidden; }
+  .idx .sq img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .idx .sq.txt { background: var(--fg); color: var(--bg); padding: 8px; font-size: 11px; line-height: 1.25; }
+  .idx .cap { font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  /* ---------- lightbox ---------- */
+  #lb {
+    position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.96);
+    display: grid; grid-template-rows: 1fr auto;
+    padding: calc(60px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  #lb .stage { position: relative; min-height: 0; display: grid; place-items: center; }
+  #lb .stage img { max-width: 100%; max-height: 100%; max-height: calc(100dvh - 160px); object-fit: contain; transition: filter .3s; }
+  #lb .stage img.loading { filter: blur(10px); }
+  #lb .stage .note { max-width: 60ch; max-height: 100%; overflow-y: auto; white-space: pre-wrap; font-size: 18px; line-height: 1.45; }
+  #lb .prev, #lb .next { position: absolute; top: 0; bottom: 0; width: 40%; }
+  #lb .prev { left: 0; cursor: w-resize; }
+  #lb .next { right: 0; cursor: e-resize; }
+  #lb .bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-top: 14px; font-size: 13px; }
+  #lb .bar .l { display: grid; gap: 4px; min-width: 0; max-width: 70ch; }
+  #lb .bar .r { display: flex; gap: 24px; align-items: end; }
+  #lb .close { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  @media (max-width: 700px) {
+    #top { grid-template-columns: 1fr 1fr; font-size: 14px; }
+    .ext { grid-row: 2; grid-column: 1 / -1; gap: 24px; }
+    .views { gap: 20px; }
+    .panel { padding-top: calc(100px + env(safe-area-inset-top, 0px)); }
+    .imgs { columns: 2; }
+  }
+</style>
+</head>
+<body>
+
+<header id="top">
+  <a href="https://www.instagram.com/artoflah/" target="_blank" rel="noopener">@artoflah</a>
+  <nav class="ext" aria-label="archives">
+    <a href="https://www.are.na/artoflah/th-s-o4krlhrumqe" target="_blank" rel="noopener">are.na</a>
+    <a href="https://www.cosmos.so/artoflah/living-archive" target="_blank" rel="noopener">cosmos</a>
+  </nav>
+  <nav class="views" aria-label="views">
+    <button id="v-index" data-view="index" aria-pressed="false">index</button>
+    <button id="v-images" data-view="images" aria-pressed="false">images</button>
+    <button id="v-links" data-view="links" aria-pressed="false">links</button>
+  </nav>
+</header>
+
+<main id="orbit" aria-label="archive orbit"></main>
+<section id="panel" class="panel" hidden></section>
+
+<div id="lb" hidden role="dialog" aria-modal="true" aria-label="entry">
+  <button class="close" id="lb-close" aria-label="close">close</button>
+  <div class="stage" id="lb-stage"></div>
+  <div class="bar" id="lb-bar"></div>
+</div>
+
+<div id="status">loading…</div>
+
+<script>
+// =============================================================
+//  SOURCES — change these if you start a new channel / cluster
+// =============================================================
+const ARENA_CHANNEL  = "th-s-o4krlhrumqe";
+const COSMOS_USER    = "artoflah";
+const COSMOS_CLUSTER = "living-archive";
+const REFRESH_EVERY  = 60 * 1000; // check for new posts every minute
+
+// =============================================================
+//  FETCHING
+// =============================================================
+async function fetchArena() {
+  const out = [];
+  for (let page = 1; page < 50; page++) {
+    const res = await fetch(`https://api.are.na/v2/channels/${ARENA_CHANNEL}/contents?per=100&page=${page}&t=${Date.now()}`);
+    if (!res.ok) throw new Error("are.na " + res.status);
+    const data = await res.json();
+    const blocks = data.contents || [];
+    for (const b of blocks) {
+      const item = fromArena(b);
+      if (item) out.push(item);
+    }
+    if (blocks.length < 100) break;
+  }
+  return out;
+}
+
+function fromArena(b) {
+  if (b.class === "Channel") return null;
+  const img = b.image || null;
+  const kind = b.class === "Text" ? "text"
+             : b.class === "Image" ? "image"
+             : "link"; // Link, Media, Attachment
+  const url = (b.source && b.source.url) || (b.attachment && b.attachment.url) || null;
+  return {
+    key: "arena-" + b.id,
+    source: "are.na",
+    kind,
+    thumb: img ? (img.thumb && img.thumb.url) || img.display.url : null,
+    mid:   img ? (img.display && img.display.url) : null,
+    full:  img ? ((img.large && img.large.url) || (img.original && img.original.url) || img.display.url) : null,
+    title: b.title || b.generated_title || "",
+    text:  kind === "text" ? (b.content || "") : (b.description || ""),
+    url,
+    page: `https://www.are.na/block/${b.id}`,
+    date: new Date(b.connected_at || b.created_at),
+  };
+}
+
+const COSMOS_QUERY = `query($clusterInput:ClusterGetInput,$pageCursor:String,$pageSize:Int){
+  clusterConnections(clusterInput:$clusterInput meta:{pageSize:$pageSize pageCursor:$pageCursor}){
+    items{element{__typename id createdAt shareUrl generatedCaption{text} source{url}
+      ...on MediaElementTile{media{url __typename ...on Video{thumbnail{url}} ...on AnimatedImage{video{thumbnailUrl}}}}
+      ...on WebsiteElementTile{media{url} websiteTitle:title}
+      ...on ProductElementTile{media{url} productTitle:name}
+      ...on TextElementTile{text}}}
+    meta{nextPageCursor}}}`;
+
+async function fetchCosmos() {
+  const out = [];
+  let cursor = null;
+  for (let i = 0; i < 50; i++) {
+    const res = await fetch("https://api.cosmos.so/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: COSMOS_QUERY,
+        variables: { clusterInput: { ownerUsername: COSMOS_USER, slug: COSMOS_CLUSTER }, pageSize: 50, pageCursor: cursor },
+      }),
+    });
+    if (!res.ok) throw new Error("cosmos " + res.status);
+    const json = await res.json();
+    const conn = json.data && json.data.clusterConnections;
+    if (!conn) throw new Error("cosmos: no data");
+    for (const { element: e } of conn.items) {
+      const item = fromCosmos(e);
+      if (item) out.push(item);
+    }
+    cursor = conn.meta.nextPageCursor;
+    if (!cursor || !conn.items.length) break;
+  }
+  return out;
+}
+
+function cosmosSized(url, w) {
+  if (!url || !url.includes("cdn.cosmos.so")) return url;
+  return url.split("?")[0] + `?format=jpeg&w=${w}`;
+}
+
+function fromCosmos(e) {
+  const m = e.media || null;
+  let still = m && m.url;
+  if (m && m.__typename === "Video") still = m.thumbnail && m.thumbnail.url;
+  if (m && m.__typename === "AnimatedImage") still = (m.video && m.video.thumbnailUrl) || m.url;
+  const caption = ((e.generatedCaption && e.generatedCaption.text) || "").replace(/<\/?n>/g, "");
+  const kind = e.__typename === "TextElementTile" ? "text"
+             : e.__typename === "WebsiteElementTile" ? "link"
+             : "image";
+  return {
+    key: "cosmos-" + e.id,
+    source: "cosmos",
+    kind,
+    thumb: cosmosSized(still, 240),
+    mid:   cosmosSized(still, 700),
+    full:  m && m.__typename === "AnimatedImage" ? m.url : cosmosSized(still, 1400),
+    title: e.websiteTitle || e.productTitle || caption,
+    text:  kind === "text" ? (e.text || "") : "",
+    url:   (e.source && e.source.url) || null,
+    page:  e.shareUrl,
+    date:  new Date(e.createdAt),
+  };
+}
+
+// =============================================================
+//  STATE
+// =============================================================
+let items = [];            // newest first
+let view = null;           // null = orbit, or "index" | "images" | "links"
+let lbList = [], lbPos = 0;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+const fmtDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toLowerCase();
+const visuals = () => items.filter((i) => i.thumb);
+
+async function refresh() {
+  const results = await Promise.allSettled([fetchArena(), fetchCosmos()]);
+  const fresh = [];
+  const failed = [];
+  results.forEach((r, i) => r.status === "fulfilled" ? fresh.push(...r.value) : failed.push(i ? "cosmos" : "are.na"));
+  // keep old items from a source that failed this time
+  for (const name of failed) fresh.push(...items.filter((i) => i.source === name));
+  fresh.sort((a, b) => b.date - a.date);
+
+  const changed = fresh.map((i) => i.key).join() !== items.map((i) => i.key).join();
+  items = fresh;
+  if (changed) {
+    syncOrbit();
+    if (view) renderPanel();
+  }
+  const t = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  $("status").textContent = `${items.length} entries · updated ${t}` + (failed.length ? ` · couldn't reach ${failed.join(" & ")}` : "");
+}
+
+// =============================================================
+//  ORBIT  (an ellipse of thumbnails slowly travelling around)
+// =============================================================
+const orbitEl = $("orbit");
+const nodes = new Map();   // key -> { el, x, y, born }
+let offset = 0;
+let hovering = false;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function syncOrbit() {
+  const keep = new Set();
+  // oldest first around the ring so new posts appear at the end of the loop
+  const ring = items.filter((i) => i.thumb || i.kind === "text").slice().reverse();
+  ring.forEach((it, idx) => {
+    keep.add(it.key);
+    let n = nodes.get(it.key);
+    if (!n) {
+      const el = document.createElement("div");
+      el.className = "o" + (it.thumb ? "" : " note");
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", it.title || it.kind);
+      if (it.thumb) {
+        const img = new Image();
+        img.alt = "";
+        img.decoding = "async";
+        img.onload = () => { img.classList.add("in"); n.ratio = img.naturalWidth / img.naturalHeight || 1; };
+        img.src = it.thumb;
+        el.appendChild(img);
+      } else {
+        el.textContent = it.text.slice(0, 160);
+      }
+      el.addEventListener("click", () => openLightbox(currentRing(), it.key));
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") el.click(); });
+      el.addEventListener("mouseenter", () => (hovering = true));
+      el.addEventListener("mouseleave", () => (hovering = false));
+      n = { el, x: innerWidth / 2, y: innerHeight / 2, ratio: 1 };
+      nodes.set(it.key, n);
+      orbitEl.appendChild(n.el);
+    }
+    n.idx = idx;
+    n.total = ring.length;
+  });
+  for (const [k, n] of nodes) if (!keep.has(k)) { n.el.remove(); nodes.delete(k); }
+}
+
+function currentRing() {
+  return [...nodes.entries()].sort((a, b) => a[1].idx - b[1].idx).map(([k]) => items.find((i) => i.key === k)).filter(Boolean);
+}
+
+function tick() {
+  const W = innerWidth, H = innerHeight;
+  const mobile = W < 700;
+  const rx = W * (mobile ? 0.40 : 0.36);
+  const ry = H * (mobile ? 0.30 : 0.30);
+  const size = mobile ? 46 : 64;
+  if (!hovering && !reduceMotion && !view) offset += mobile ? 0.004 : 0.006;
+
+  for (const n of nodes.values()) {
+    const a = ((n.idx + offset) / n.total) * Math.PI * 2;
+    const tx = W / 2 + Math.cos(a) * rx;
+    const ty = H / 2 + 10 + Math.sin(a) * ry;
+    // ease toward the target so the ring re-spaces smoothly when posts are added
+    n.x += (tx - n.x) * 0.12;
+    n.y += (ty - n.y) * 0.12;
+    const r = n.ratio || 1;
+    const w = r >= 1 ? size : size * r;
+    const h = r >= 1 ? size / r : size;
+    n.el.style.width = w + "px";
+    n.el.style.height = h + "px";
+    n.el.style.transform = `translate(${n.x - w / 2}px, ${n.y - h / 2}px)`;
+    // things at the front (bottom of the ring) sit above the back
+    n.el.style.zIndex = Math.round(ty);
+  }
+  requestAnimationFrame(tick);
+}
+
+// =============================================================
+//  GRID VIEWS
+// =============================================================
+function setView(v) {
+  view = view === v ? null : v;   // clicking the active view goes back to the orbit
+  document.querySelectorAll(".views button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  $("panel").hidden = !view;
+  orbitEl.hidden = !!view;
+  if (view) { renderPanel(); $("panel").scrollTop = 0; }
+  try { history.replaceState(null, "", view ? "#" + view : location.pathname); } catch {}
+}
+
+function renderPanel() {
+  const p = $("panel");
+  if (view === "images") {
+    const list = visuals();
+    p.innerHTML = list.length
+      ? `<div class="imgs">${list.map((i) => `<button data-k="${i.key}" aria-label="${esc(i.title || "image")}"><img loading="lazy" src="${esc(i.mid || i.thumb)}" alt=""></button>`).join("")}</div>`
+      : `<p class="empty">No images yet. Anything you save to the are.na channel or the cosmos cluster shows up here.</p>`;
+    bindOpen(p, list);
+  }
+
+  if (view === "links") {
+    const list = items.filter((i) => i.url);
+    p.innerHTML = list.length
+      ? `<div class="links">${list.map((i) => `
+          <a href="${esc(i.url)}" target="_blank" rel="noopener">
+            <div class="thumb">${i.thumb ? `<img loading="lazy" src="${esc(i.thumb)}" alt="">` : ""}</div>
+            <div class="t">${esc(i.title || host(i.url))}</div>
+            <div class="d">${esc(host(i.url))} · via ${i.source} · ${fmtDate(i.date)}</div>
+          </a>`).join("")}</div>`
+      : `<p class="empty">No links yet. Add a link block on are.na and it appears here.</p>`;
+  }
+
+  if (view === "index") {
+    // group everything by week (monday start) — one section per weekly upload
+    const weeks = new Map();
+    for (const it of items) {
+      const d = new Date(it.date); d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      const k = d.getTime();
+      if (!weeks.has(k)) weeks.set(k, []);
+      weeks.get(k).push(it);
+    }
+    const order = [...weeks.keys()].sort((a, b) => b - a);
+    p.innerHTML = order.length ? order.map((k) => {
+      const start = new Date(k), end = new Date(k + 6 * 864e5);
+      const list = weeks.get(k);
+      const label = `week of ${start.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toLowerCase()} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toLowerCase()}`;
+      return `<section class="week"><h2>${label}<span>${list.length} ${list.length === 1 ? "entry" : "entries"}</span></h2>
+        <div class="idx">${list.map((i) => `
+          <button data-k="${i.key}">
+            ${i.thumb ? `<div class="sq"><img loading="lazy" src="${esc(i.thumb)}" alt=""></div>` : `<div class="sq txt">${esc((i.text || i.title).slice(0, 220))}</div>`}
+            <div class="cap">${esc(i.title || (i.url ? host(i.url) : i.kind))}</div>
+            <div class="meta">${i.kind} · ${i.source} · ${fmtDate(i.date)}</div>
+          </button>`).join("")}</div></section>`;
+    }).join("") : `<p class="empty">Nothing here yet.</p>`;
+    bindOpen(p, items);
+  }
+}
+
+function bindOpen(root, list) {
+  root.querySelectorAll("button[data-k]").forEach((b) => b.addEventListener("click", () => openLightbox(list, b.dataset.k)));
+}
+
+// =============================================================
+//  LIGHTBOX
+// =============================================================
+function openLightbox(list, key) {
+  lbList = list;
+  lbPos = Math.max(0, list.findIndex((i) => i.key === key));
+  $("lb").hidden = false;
+  showEntry();
+}
+function closeLightbox() { $("lb").hidden = true; $("lb-stage").innerHTML = ""; }
+function step(d) { lbPos = (lbPos + d + lbList.length) % lbList.length; showEntry(); }
+
+function showEntry() {
+  const it = lbList[lbPos];
+  if (!it) return;
+  const stage = $("lb-stage");
+  if (it.thumb) {
+    stage.innerHTML = `<img class="loading" src="${esc(it.mid || it.thumb)}" alt="${esc(it.title)}">`;
+    const im = stage.querySelector("img");
+    const big = new Image();
+    big.onload = () => { if (lbList[lbPos] === it) { im.src = big.src; im.classList.remove("loading"); } };
+    big.onerror = () => im.classList.remove("loading");
+    big.src = it.full || it.mid;
+  } else {
+    stage.innerHTML = `<div class="note">${esc(it.text || it.title)}</div>`;
+  }
+  stage.insertAdjacentHTML("beforeend", `<button class="prev" aria-label="previous"></button><button class="next" aria-label="next"></button>`);
+  stage.querySelector(".prev").onclick = () => step(-1);
+  stage.querySelector(".next").onclick = () => step(1);
+
+  $("lb-bar").innerHTML = `
+    <div class="l">
+      ${it.title ? `<div>${esc(it.title)}</div>` : ""}
+      <div class="meta">${fmtDate(it.date)} · ${it.kind} · from ${it.source}</div>
+    </div>
+    <div class="r">
+      ${it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">source ↗</a>` : ""}
+      <a href="${esc(it.page)}" target="_blank" rel="noopener">${it.source} ↗</a>
+      <span class="meta">${lbPos + 1} / ${lbList.length}</span>
+    </div>`;
+}
+
+$("lb-close").onclick = closeLightbox;
+addEventListener("keydown", (e) => {
+  if (!$("lb").hidden) {
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowRight") step(1);
+    if (e.key === "ArrowLeft") step(-1);
+  } else if (e.key === "Escape" && view) setView(view);
+});
+let touchX = null;
+$("lb").addEventListener("touchstart", (e) => (touchX = e.touches[0].clientX), { passive: true });
+$("lb").addEventListener("touchend", (e) => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  touchX = null;
+});
+
+document.querySelectorAll(".views button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+// =============================================================
+//  BOOT
+// =============================================================
+requestAnimationFrame(tick);
+refresh().then(() => {
+  const start = location.hash.slice(1);
+  if (["index", "images", "links"].includes(start)) setView(start);
+});
+setInterval(refresh, REFRESH_EVERY);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
