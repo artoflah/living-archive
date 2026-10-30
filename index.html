@@ -108,6 +108,17 @@
   .idx .sq.txt { background: var(--fg); color: var(--bg); padding: 8px; font-size: 11px; line-height: 1.25; }
   .idx .cap { font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
+  /* sources */
+  .src-intro { color: var(--dim); max-width: 60ch; margin: 0 0 28px; }
+  .srcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 36px 16px; }
+  .srcs article { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .srcs .pic { display: block; width: 100%; aspect-ratio: 4/5; background: #111; overflow: hidden; text-align: left; }
+  .srcs .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .srcs .pic.txt { background: var(--fg); color: var(--bg); padding: 12px; font-size: 15px; line-height: 1.25; display: flex; align-items: flex-end; }
+  .srcs .t { overflow-wrap: anywhere; }
+  .srcs .d { font-size: 13px; color: var(--dim); }
+  .srcs .meta a { text-decoration: underline; text-underline-offset: 3px; }
+
   /* ---------- lightbox ---------- */
   #lb {
     position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.96);
@@ -147,6 +158,7 @@
     <button id="v-index" data-view="index" aria-pressed="false">index</button>
     <button id="v-images" data-view="images" aria-pressed="false">images</button>
     <button id="v-links" data-view="links" aria-pressed="false">links</button>
+    <button id="v-sources" data-view="sources" aria-pressed="false">sources</button>
   </nav>
 </header>
 
@@ -169,6 +181,62 @@ const ARENA_CHANNEL  = "th-s-o4krlhrumqe";
 const COSMOS_USER    = "artoflah";
 const COSMOS_CLUSTER = "living-archive";
 const REFRESH_EVERY  = 60 * 1000; // check for new posts every minute
+
+// =============================================================
+//  RESEARCH SOURCES — the archives, artworks and studies behind the project.
+//  img: a file in the sources/ folder. Leave it null to show the title as a
+//  text tile instead (add your own image file later and put its path here).
+// =============================================================
+const SOURCES = [
+  {
+    title: "W.E.B. Du Bois, data portraits, 1900",
+    about: "Black life measured on Black terms, for the Paris Exposition.",
+    cite: "Library of Congress",
+    img: "sources/du-bois-occupations-and-income.jpg",
+    imgNote: "[The Georgia Negro] Occupations and income. Public domain, Library of Congress.",
+    url: "https://www.loc.gov/item/2013650449/",
+  },
+  {
+    title: "The Negro Motorist Green Book, 1936–1966",
+    about: "A guide to where Black travelers were allowed to be.",
+    cite: "NYPL, Schomburg Center",
+    img: "sources/green-book-1947.jpg",
+    imgNote: "1947 edition cover. Public domain, New York Public Library.",
+    url: "https://digitalcollections.nypl.org/collections/the-green-book",
+  },
+  {
+    title: "Carrie Mae Weems, From Here I Saw What Happened and I Cried",
+    about: "Rewrites 1850 photographs made to “measure” enslaved people.",
+    cite: "1995–96",
+    img: null,
+    url: "https://www.moma.org/collection/?q=From%20Here%20I%20Saw%20What%20Happened%20and%20I%20Cried",
+  },
+  {
+    title: "Kaphar & Betts, Redaction",
+    about: "Legal documents turned into poems. Its typeface sets my history book.",
+    cite: "MoMA PS1, 2019",
+    img: null,
+    url: "https://www.moma.org/calendar/exhibitions/5056",
+  },
+  {
+    title: "Barbara Kruger, Belief+Doubt",
+    about: "Words that become the room itself.",
+    cite: "Hirshhorn Museum, 2012",
+    img: null,
+    url: "https://hirshhorn.si.edu/exhibitions/barbara-kruger-beliefdoubt",
+  },
+  {
+    title: "Studies on being measured",
+    about: "Anderson, “The White Space” (2015); “The Costs of Code-Switching,” HBR (2019).",
+    cite: "research",
+    img: null,
+    url: "https://journals.sagepub.com/doi/10.1177/2332649214561306",
+    links: [
+      ["The White Space", "https://journals.sagepub.com/doi/10.1177/2332649214561306"],
+      ["The Costs of Code-Switching", "https://hbr.org/2019/11/the-costs-of-codeswitching"],
+    ],
+  },
+];
 
 // =============================================================
 //  FETCHING
@@ -287,6 +355,12 @@ const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
 const fmtDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toLowerCase();
 const visuals = () => items.filter((i) => i.thumb);
+const sourceItems = () => SOURCES.map((s, n) => ({
+  key: "src-" + n, source: "sources", kind: s.img ? "image" : "text",
+  thumb: s.img, mid: s.img, full: s.img,
+  title: s.title, text: s.about, cite: s.cite, imgNote: s.imgNote, links: s.links,
+  url: s.url, page: null, date: null,
+}));
 
 async function refresh() {
   const results = await Promise.allSettled([fetchArena(), fetchCosmos()]);
@@ -418,6 +492,21 @@ function renderPanel() {
       : `<p class="empty">No links yet. Add a link block on are.na and it appears here.</p>`;
   }
 
+  if (view === "sources") {
+    const list = sourceItems();
+    p.innerHTML = `<p class="src-intro">The archives, artworks and research behind the project.</p>
+      <div class="srcs">${list.map((i) => `
+        <article>
+          <button class="pic${i.thumb ? "" : " txt"}" data-k="${i.key}" aria-label="${esc(i.title)}">
+            ${i.thumb ? `<img loading="lazy" src="${esc(i.thumb)}" alt="${esc(i.imgNote || i.title)}">` : esc(i.title)}
+          </button>
+          <div class="t">${esc(i.title)}</div>
+          <div class="d">${esc(i.text)}</div>
+          <div class="meta">${esc(i.cite)} · ${(i.links || [["source", i.url]]).map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join(" · ")}</div>
+        </article>`).join("")}</div>`;
+    bindOpen(p, list);
+  }
+
   if (view === "index") {
     // group everything by week (monday start) — one section per weekly upload
     const weeks = new Map();
@@ -472,12 +561,27 @@ function showEntry() {
     big.onload = () => { if (lbList[lbPos] === it) { im.src = big.src; im.classList.remove("loading"); } };
     big.onerror = () => im.classList.remove("loading");
     big.src = it.full || it.mid;
+  } else if (it.source === "sources") {
+    stage.innerHTML = `<div class="note">${esc(it.title)}\n\n${esc(it.text)}</div>`;
   } else {
     stage.innerHTML = `<div class="note">${esc(it.text || it.title)}</div>`;
   }
   stage.insertAdjacentHTML("beforeend", `<button class="prev" aria-label="previous"></button><button class="next" aria-label="next"></button>`);
   stage.querySelector(".prev").onclick = () => step(-1);
   stage.querySelector(".next").onclick = () => step(1);
+
+  if (it.source === "sources") {
+    $("lb-bar").innerHTML = `
+      <div class="l">
+        <div>${esc(it.title)}</div>
+        <div class="meta">${esc(it.text)} · ${esc(it.cite)}${it.imgNote ? ` · ${esc(it.imgNote)}` : ""}</div>
+      </div>
+      <div class="r">
+        ${(it.links || [["source", it.url]]).map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join("")}
+        <span class="meta">${lbPos + 1} / ${lbList.length}</span>
+      </div>`;
+    return;
+  }
 
   $("lb-bar").innerHTML = `
     <div class="l">
@@ -516,7 +620,7 @@ document.querySelectorAll(".views button").forEach((b) => b.addEventListener("cl
 requestAnimationFrame(tick);
 refresh().then(() => {
   const start = location.hash.slice(1);
-  if (["index", "images", "links"].includes(start)) setView(start);
+  if (["index", "images", "links", "sources"].includes(start)) setView(start);
 });
 setInterval(refresh, REFRESH_EVERY);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
